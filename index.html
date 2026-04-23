@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="CC Irunes">
 <meta name="theme-color" content="#0D2147">
 <title>Club Ciclista Irunes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -192,6 +193,29 @@
     .club-name{font-size:1.6rem;margin-bottom:.3rem;}
     .club-sub{margin-bottom:0;}
   }
+
+  /* Modal buscar socio */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px);}
+  .modal-box{background:#0D2147;border:1.5px solid rgba(74,127,212,.4);border-radius:20px;padding:2rem;width:100%;max-width:420px;position:relative;}
+  .modal-box h2{font-family:'Playfair Display',serif;color:#A8C8F0;font-size:1.3rem;margin-bottom:.3rem;}
+  .modal-box p{font-size:.83rem;color:rgba(168,200,240,.6);margin-bottom:1.5rem;}
+  .modal-field{margin-bottom:1rem;}
+  .modal-field label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:#A8C8F0;margin-bottom:.4rem;}
+  .modal-field input{width:100%;padding:.85rem 1rem;background:rgba(255,255,255,.07);border:1.5px solid rgba(74,127,212,.35);border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:1rem;outline:none;box-sizing:border-box;}
+  .modal-field input:focus{border-color:#A8C8F0;}
+  .modal-field input::placeholder{color:rgba(255,255,255,.25);}
+  .modal-error{color:#ff8080;font-size:.8rem;margin-bottom:.75rem;display:none;}
+  .modal-result{background:rgba(74,127,212,.15);border:1.5px solid rgba(74,127,212,.4);border-radius:12px;padding:1.2rem;margin-bottom:1rem;display:none;}
+  .modal-result .socio-num{font-family:'Playfair Display',serif;font-size:2rem;color:#DDEEFF;text-align:center;margin-bottom:.2rem;}
+  .modal-result .socio-name{font-size:.9rem;color:#A8C8F0;text-align:center;}
+  .modal-btn-row{display:flex;gap:.75rem;margin-top:.5rem;}
+  .modal-btn{flex:1;padding:.9rem;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:500;cursor:pointer;transition:all .2s;}
+  .modal-btn-primary{background:#1A3A6B;color:#fff;border:1.5px solid rgba(74,127,212,.5);}
+  .modal-btn-primary:hover{background:#2A5298;}
+  .modal-btn-secondary{background:rgba(255,255,255,.06);color:#A8C8F0;border:1.5px solid rgba(74,127,212,.25);}
+  .modal-btn-secondary:hover{background:rgba(255,255,255,.1);}
+  .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:rgba(168,200,240,.5);font-size:1.4rem;cursor:pointer;line-height:1;}
+  .modal-close:hover{color:#fff;}
 </style>
 </head>
 <body>
@@ -226,7 +250,104 @@
   </div>
 </div>
 
+  <button onclick="document.getElementById('modal-socio').style.display='flex'" style="margin-top:1.5rem;background:none;border:none;color:rgba(168,200,240,.45);font-family:'DM Sans',sans-serif;font-size:.82rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;position:relative;z-index:1;">¿No recuerdas tu número de socio?</button>
+
 <div class="footer">ccirunes.com · Sociedad Gastronómica</div>
+
+
+<!-- Modal buscar número de socio -->
+<div class="modal-bg" id="modal-socio" style="display:none;" onclick="if(event.target===this)cerrarModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarModal()">×</button>
+    <h2>Buscar número de socio</h2>
+    <p>Introduce tu DNI y teléfono para identificarte.</p>
+
+    <div class="modal-field">
+      <label>DNI (sin letra)</label>
+      <input type="tel" id="buscar-dni" placeholder="Ej: 12345678" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    </div>
+
+    <div class="modal-field">
+      <label>Teléfono móvil</label>
+      <input type="tel" id="buscar-tel" placeholder="Ej: 612345678" inputmode="numeric" maxlength="9" autocomplete="off">
+    </div>
+
+    <div class="modal-error" id="buscar-error"></div>
+
+    <div class="modal-result" id="buscar-result">
+      <div style="font-size:.85rem;color:#A8C8F0;text-align:center;margin-bottom:.4rem;">Tu número de socio es</div>
+      <div class="socio-num" id="buscar-num"></div>
+      <div class="socio-name" id="buscar-name"></div>
+    </div>
+
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-secondary" onclick="cerrarModal()">Cerrar</button>
+      <button class="modal-btn modal-btn-primary" id="buscar-btn" onclick="buscarSocio()">Buscar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://dbydtwkzknbpifneznsu.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRieWR0d2t6a25icGlmbmV6bnN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjMwODIsImV4cCI6MjA5MDc5OTA4Mn0.HcTWBEaI-2EH66mAUAaEM2ppzDG3eCd1ANjopNZdt1g';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+function cerrarModal(){
+  document.getElementById('modal-socio').style.display='none';
+  document.getElementById('buscar-dni').value='';
+  document.getElementById('buscar-tel').value='';
+  document.getElementById('buscar-error').style.display='none';
+  document.getElementById('buscar-result').style.display='none';
+}
+
+async function buscarSocio(){
+  const dniInput=document.getElementById('buscar-dni').value.trim().replace(/[^0-9]/g,'');
+  const telInput=document.getElementById('buscar-tel').value.trim().replace(/[^0-9]/g,'');
+  const err=document.getElementById('buscar-error');
+  const res=document.getElementById('buscar-result');
+  const btn=document.getElementById('buscar-btn');
+
+  err.style.display='none';
+  res.style.display='none';
+
+  if(!dniInput){err.textContent='Por favor introduce tu DNI.';err.style.display='block';return;}
+  if(!telInput){err.textContent='Por favor introduce tu teléfono.';err.style.display='block';return;}
+
+  btn.textContent='Buscando…';
+  btn.disabled=true;
+
+  const {data,error}=await sb.from('socios').select('*');
+
+  btn.textContent='Buscar';
+  btn.disabled=false;
+
+  if(error||!data){
+    err.textContent='Error al conectar con la base de datos. Inténtalo de nuevo.';
+    err.style.display='block';
+    return;
+  }
+
+  const socio=data.find(s=>s.dni&&s.dni.replace(/[^0-9]/g,'')===dniInput);
+  if(!socio){
+    err.textContent='No encontramos ningún socio con ese DNI.';
+    err.style.display='block';
+    return;
+  }
+
+  // Guardar teléfono si es nuevo o diferente
+  if(telInput && telInput!==socio.tel){
+    await sb.from('socios').update({tel:telInput}).eq('id',socio.id);
+  }
+
+  const num=String(socio.socio_num||socio.num||socio.id||'').padStart(3,'0');
+  document.getElementById('buscar-num').textContent='Nº '+num;
+  document.getElementById('buscar-name').textContent=(socio.nombre||'')+(socio.apellidos?' '+socio.apellidos:'');
+  res.style.display='block';
+}
+
+document.getElementById('buscar-dni').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('buscar-tel').focus();});
+document.getElementById('buscar-tel').addEventListener('keydown',e=>{if(e.key==='Enter')buscarSocio();});
+</script>
 
 </body>
 </html>
